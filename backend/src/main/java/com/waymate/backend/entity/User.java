@@ -45,7 +45,7 @@ public class User {
     private String googleId;
 
     @Column(nullable = false)
-    private String authProvider="LOACAL";
+    private String authProvider="LOCAL";
 
     //method that will run before saving a new entity to avoid manually updating the date and time
     @PrePersist
