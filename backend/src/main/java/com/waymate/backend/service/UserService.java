@@ -4,6 +4,7 @@ import com.waymate.backend.dto.LoginRequest;
 import com.waymate.backend.dto.LoginResponse;
 import com.waymate.backend.dto.RegisterRequest;
 import com.waymate.backend.entity.EmailOtp;
+import com.waymate.backend.entity.OtpPurpose;
 import com.waymate.backend.entity.User;
 import com.waymate.backend.exception.ApiException;
 import com.waymate.backend.repository.EmailOtpRepository;
@@ -50,7 +51,7 @@ public class UserService {
         }
         // Ensure an OTP record exists for this email.
         EmailOtp emailOtp=emailOtpRepository
-                .findTopByEmailOrderByCreatedAtDesc(email)
+                .findTopByEmailAndPurposeOrderByCreatedAtDesc(email, OtpPurpose.REGISTRATION)
                 .orElseThrow(()->new ApiException(
                         HttpStatus.FORBIDDEN,
                         "Please verify your email first."));
@@ -90,14 +91,22 @@ public class UserService {
 
     //login an existing user
     public LoginResponse loginUser(LoginRequest request){
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
         // Return a generic error so we don't reveal whether an email is registered.
-        User user=userRepository.findByEmail(request.getEmail())
+        User user=userRepository.findByEmail(email)
                 .orElseThrow(()->new ApiException(
                         HttpStatus.UNAUTHORIZED,
                         "Invalid email or password."));
 
-        // Reject login when the supplied password doesn't match.
 
+        // Block password login if this account was created via Google SSO and has no password set
+        if (user.getPasswordHash() == null) {
+            throw new ApiException(
+                    HttpStatus.UNAUTHORIZED,
+                    "This account uses Google Sign-In. Please continue with Google."
+            );
+        }
+        // Reject login when the supplied password doesn't match.
         boolean isMatch= passwordEncoder.matches(request.getPassword(),user.getPasswordHash());
         if(!isMatch){
             throw new ApiException(
@@ -143,6 +152,8 @@ public class UserService {
         user.setEmailVerified(false);
         user.setDeletedAt(LocalDateTime.now());
         user.setAccountStatus("DELETED");
+
+        user.setGoogleId(null);
         refreshTokenService.revokeAllRefreshTokens(user);
     }
 }

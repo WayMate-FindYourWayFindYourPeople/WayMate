@@ -5,15 +5,13 @@ import com.waymate.backend.dto.*;
 import java.util.UUID;
 
 
-import com.waymate.backend.service.EmailOtpService;
-import com.waymate.backend.service.PasswordResetService;
-import com.waymate.backend.service.RefreshTokenService;
+import com.waymate.backend.service.*;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
-import com.waymate.backend.service.UserService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,11 +21,13 @@ public class AuthController {
     private final EmailOtpService emailOtpService;
     private final RefreshTokenService refreshTokenService;
     private final PasswordResetService passwordResetService;
-    public AuthController(UserService userService, RefreshTokenService refreshTokenService, EmailOtpService emailOtpService, PasswordResetService passwordResetService){
+    private final GoogleAuthService googleAuthService;
+    public AuthController(UserService userService, RefreshTokenService refreshTokenService, EmailOtpService emailOtpService, PasswordResetService passwordResetService, GoogleAuthService googleAuthService){
         this.userService=userService;
         this.emailOtpService=emailOtpService;
         this.refreshTokenService=refreshTokenService;
         this.passwordResetService=passwordResetService;
+        this.googleAuthService=googleAuthService;
     }
 
     //Register a new User
@@ -88,22 +88,27 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    // Request a password-reset link
+    // Request a password-reset otp email
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(
+    public ResponseEntity<RequestOtpResponse> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request){
-
-        //process the password-reset request
-        passwordResetService.requestPasswordReset(request.getEmail());
-        return ResponseEntity.ok("A password-reset link will be sent.");
+        RequestOtpResponse response=passwordResetService.requestPasswordResetOtp(request.getEmail());
+        return ResponseEntity.ok(response);
     }
 
-    // Reset the password
+    //Verify the password-reset otp
+    @PostMapping("/verify-reset-otp")
+    public ResponseEntity<VerifyOtpResponse>verifyResetOtp(@Valid @RequestBody VerifyOtpRequest request){
+        VerifyOtpResponse response=passwordResetService.verifyPasswordResetOtp(request);
+        return ResponseEntity.ok(response);
+
+    }
+    // Reset the password after otp verification
     @PostMapping("/reset-password")
     public ResponseEntity<String>resetPassword(
             @Valid @RequestBody ResetPasswordRequest request){
         passwordResetService.resetPassword(
-                request.getToken(),
+                request.getEmail(),
                 request.getNewPassword()
         );
         return ResponseEntity.ok("Password reset successfully!");
@@ -115,5 +120,13 @@ public class AuthController {
         UUID userId=(UUID)authentication.getPrincipal();
         userService.deleteAccount(userId);
         return ResponseEntity.ok("Account Deleted Successfully!");
+    }
+
+    //Google SSO authenticate and register
+    @PostMapping("/google")
+    public ResponseEntity<LoginResponse>googleLogin(@Valid @RequestBody GoogleLoginRequest request){
+        //Delegates token verification and user lookup/creation to GoogleAuthService
+        LoginResponse response=googleAuthService.authenticateWithGoogle(request.getIdToken());
+        return ResponseEntity.ok(response);
     }
 }
