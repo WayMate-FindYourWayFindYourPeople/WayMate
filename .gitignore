@@ -12,6 +12,7 @@
 
 # Package Files #
 *.jar
+!**/gradle/wrapper/gradle-wrapper.jar
 *.war
 *.nar
 *.ear
@@ -25,3 +26,13 @@ replay_pid*
 
 # intellij's workspace settings
 .idea/
+
+# Android & Gradle
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+local.properties
+.cxx/
+*.iml

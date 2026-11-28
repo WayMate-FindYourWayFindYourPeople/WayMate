@@ -18,7 +18,7 @@ WayMate is an airport ridesharing application that connects passengers traveling
 
 | Component | Technology |
 |---|---|
-| Mobile App | React Native |
+| Mobile App (Frontend) | Android (Kotlin, Jetpack Compose) |
 | Backend | Java, Spring Boot |
 | Database | PostgreSQL (Supabase) |
 | Maps & Navigation | Google Maps Platform |
